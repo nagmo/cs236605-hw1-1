@@ -23,7 +23,7 @@ class LinearClassifier(object):
 
         self.weights = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.weights = torch.normal(torch.zeros([n_features, n_classes]), weight_std)
         # ========================
 
     def predict(self, x: Tensor):
@@ -44,7 +44,8 @@ class LinearClassifier(object):
 
         y_pred, class_scores = None, None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        class_scores = x.mm(self.weights)
+        _, y_pred = torch.max(class_scores, 1)
         # ========================
 
         return y_pred, class_scores
@@ -66,7 +67,8 @@ class LinearClassifier(object):
 
         acc = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        import numpy as np
+        acc = 1 - np.count_nonzero((y - y_pred).numpy()) / len(y)
         # ========================
 
         return acc * 100
@@ -99,7 +101,35 @@ class LinearClassifier(object):
             average_loss = 0
 
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            def epoch_handle(train: bool, dl: DataLoader, total_correct=0, average_loss=0):
+                train_loss = 0
+                batch_num = 0
+                for batch in dl:
+                    y_pred, x_scores = self.predict(batch[0])
+                    train_loss += loss_fn.loss(batch[0], batch[1], x_scores, y_pred) + weight_decay
+                    grad = loss_fn.grad()
+                    total_correct += self.evaluate_accuracy(batch[1], y_pred)
+                    if train:
+                        self.weights -= learn_rate * grad
+                    batch_num += 1
+                average_loss += train_loss / batch_num
+                total_correct /= batch_num
+                if train:
+                    train_res.accuracy.append(total_correct)
+                    train_res.loss.append(average_loss)
+                else:
+                    valid_res.accuracy.append(total_correct)
+                    valid_res.loss.append(average_loss)
+                return total_correct
+
+            total_correct = epoch_handle(True, dl_train)
+            last_correct = train_res.accuracy[-1] * epoch_idx
+            train_res.accuracy.append((last_correct + total_correct) / (epoch_idx + 1))
+            total_correct = epoch_handle(False, dl_valid)
+            last_correct = valid_res.accuracy[-1] * epoch_idx
+            valid_res.accuracy.append((last_correct + total_correct) / (epoch_idx + 1))
+            if len(valid_res.accuracy) > 1 and valid_res.accuracy[-1] + 0.01 < valid_res.accuracy[-2]:
+                break
             # ========================
             print('.', end='')
 
@@ -119,7 +149,8 @@ class LinearClassifier(object):
         # The output shape should be (n_classes, C, H, W).
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        w_images = self.weights if not has_bias else self.weights[:-1]
+        w_images = w_images.view([self.n_classes] + list(img_shape))
         # ========================
 
         return w_images

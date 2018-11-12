@@ -53,7 +53,12 @@ class KNNClassifier(object):
             # - Set y_pred[i] to the most common class among them
 
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            val, indices = torch.topk(dist_matrix[:, i], self.k, largest=False)
+            class_hist = [0 for x in range(self.n_classes)]
+            classes = [self.y_train[x] for x in indices]
+            for x in classes:
+                class_hist[x] += 1
+            y_pred[i] = torch.LongTensor([np.argmax(class_hist)])
             # ========================
 
         return y_pred
@@ -80,7 +85,9 @@ class KNNClassifier(object):
 
         dists = torch.tensor([])
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        dists = (self.x_train ** 2).sum(1).view(-1, 1) + \
+                (x_test ** 2).sum(1).view(1, -1) - 2.0 * \
+                torch.mm(self.x_train, torch.transpose(x_test, 0, 1))
         # ========================
 
         return dists
@@ -101,7 +108,7 @@ def accuracy(y: Tensor, y_pred: Tensor):
 
     accuracy = None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    accuracy = 1 - np.count_nonzero((y - y_pred).numpy()) / len(y)
     # ========================
 
     return accuracy
@@ -131,7 +138,14 @@ def find_best_k(ds_train: Dataset, k_choices, num_folds):
         # different split each iteration), or implement something else.
 
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        cur_accuracies = []
+        for fold in range(num_folds):
+            train_dl, validation_dl = dataloaders.create_train_validation_loaders(ds_train, 1 / num_folds, batch_size=1024)
+            model.train(train_dl)
+            x_test, y_test = dataloader_utils.flatten(validation_dl)
+            y_pred = model.predict(x_test)
+            cur_accuracies.append(accuracy(y_test, y_pred))
+        accuracies.append(cur_accuracies)
         # ========================
 
     best_k_idx = np.argmax([np.mean(acc) for acc in accuracies])
