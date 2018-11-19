@@ -55,9 +55,10 @@ class SVMHingeLoss(ClassifierLoss):
 
         loss = None
         # ====== YOUR CODE: ======
-        s_y_i = x_scores[torch.arange(x_scores.shape[0]), y].unsqueeze(1)
-        diff = (x_scores - s_y_i.expand_as(x_scores) + self.delta).apply_(lambda val: val if val >= 0 else 0)
-        diff[torch.arange(diff.size()[0]), y] = 0
+        N = x_scores.shape[0]
+        s_y_i = x_scores[torch.arange(N), y].unsqueeze(1)
+        diff = torch.max(x_scores - s_y_i + self.delta, torch.zeros_like(x_scores))
+        diff[torch.arange(N), y] = 0
         loss = diff.sum(1).mean()
         # ========================
 
